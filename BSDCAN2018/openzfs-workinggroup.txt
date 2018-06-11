@@ -1,0 +1,98 @@
+BSDCAN 2018 Developer's summit
+
+**OpenZFS Working Group**
+Matt Ahrens
+
+
+Topics:
+SLOG on NVDIMM
+Alexander Motin
+
+Started experimenting one year ago, there were a lot of problems. To talk to NVDIMM you had to go the SMBUS.
+Scalable XEON testing found configurations that works.
+There is a small driver to finish the implementation. This is limited to block storage only. The goal is to use this driver
+with ZFS.
+
+Decompress is difficult with large blocks. Decompression takes time .
+
+Random reads have the same problem with  large block decompression. Ahrens is looking to have a block accesser
+that can query the block for just the needed range.
+
+Benchmarking may benefit more from using different blocks for reads.
+There are limitations on the memory allocation side.
+
+another problem is the multiple locks. Mav was able to reduce a few locks out of the SLOG, but there are still major
+hurdles to reducing the major locks.
+
+Mav found 4 bottlenecks on the right side and 3 on the left side. He needs assistance reducing those bottlenecks.
+
+
+Integrate Illumos and FreeBSD
+Allan Jude
+
+FreeBSD uses partitions more prevalently, where replacing a disk means updating partitions. Bringing FreeBSD closer
+to illumos means being able to swap disks without having to worry about partitioning as much.
+
+Redundant root pools aren't very well supported on Solaris/illumos though. Allan thinking of having a zpool update
+command to update boot load command to understand a new pool.
+
+The idea is for a person to swap a dead disk for a new disk and the system immediately begins resilvering.
+
+Coming Soon to FreeBSD
+- Encryption
+- Redacted send/receive
+- Sequential-er scrub resilver
+- Fast clone deletion
+- Special devices for metadata
+
+Later additions to FreeBSD
+- Multi-import protection
+- RAID-Z expansion
+- DRAID
+
+OpenZFS Developer Summit 2018 is Septemer 10-11 in San Francisco
+
+Is this event more for developers? Best received talks have been developers discussing new features and how to use
+them. Also implementation details. This is still focused as a "Dev Summit", but users are welcome too.
+
+Q: is OpenZFS moving to ZFS on Linux? A: ZFS on Illumos is kind of the home of ZFS and Linux/FreeBSD are pulling
+the code from that. There is some concern to illumos' future in this role because of all the new feature development
+happening on Linux now (encryption, sequential-er scrub, etc.) Some have been ported to illumos, some are still
+being ported. Nothing is technically changing, but as feature development happens on Linux, it is difficult to get
+these features from Linux. Matt A would like to have a more formal process, but it seems ad-hoc development is
+what is happening going forward now.
+
+Example: sequential scrub/resilver is out in Linux for a couple months, but the PR has just made it to illumos as an
+effort to get the feature to FreeBSD. This is going to slow down porting the feature to FreeBSD.
+
+The problem is that more development is happening on Linux but not as many people are concerned about porting
+the features to all the other platforms.
+
+OpenZFS could invest in some tooling to maybe help this process moving forward. However, the project doesn't
+want to try and dictate the "universal features" of the open source project.
+
+Some kind of coordination team could be helpful to track the changes being made to the whole of OpenZFS and
+figure out which platforms want which features.
+
+ZFS on Linux used to compile with c89, but Matt A. changed a flag and now Linux devs are building ZFS on Linux
+much more in line with illumos.
+
+illumos has no releases, so it tries to be release quality all the time.
+ 
+We need the community to show up and suggest fixes to patchs that are low quality, or even at least point out the
+errors to improve the PRs.
+
+We've gotten lucky so far in that there hasn't been any discrepency in feature flags yet (linux uses zfs -k for x, freebsd
+uses zfs -k for y). Heavy linux development means OpenZFS may need to set something in place to avoid this
+problem.
+
+Delphix is looking to have all their work upstreamed to illumos in the next 3-6 months. Delphix is pulling down from
+illumos weekly. FreeBSD and Linux are both very up to date with illumos too.
+
+Q: Is there an interface to decode the resume token? A: it could be done more manually as the token is simple.
+
+What about adding separate permissions for ZFS allow?
+
+What is the status of non x86 OpenZFS chipsets? It is apparently working with arm64.
+
+There are a number of ZFS related talks during the conference, be sure to check them out.

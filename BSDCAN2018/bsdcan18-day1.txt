@@ -1,0 +1,307 @@
+BSDCAN 2018 Day 1 (Friday June 8)
+
+Introductions and thanking sponsors.
+Notes about the conference.
+
+
+The Tragedy of systemd
+Benno Rice (9am DMS 1160)
+-----------------------------------
+
+
+Tragedy is drama based on human sufferring that invokes pleasure in the audience.
+There's a contempt culture in communities that builds up one group at the expense of another.
+Occasionally it is good to assess the familiar to see if change is necessary.
+
+Timeline
+Starting with Unix, a happy accident that led to an idea that despite the variety in Open Source, we all think similarly
+in many areas.
+
+Looking at top output between different versions of FreeBSD. There are changes, but not many.
+
+When the internet started to grow and large applications hit the infrastructure, the idea of a "service". These
+are daemons with increased functionality.
+
+housekeeping changed to system configuration. This leads to confusion between system configuration and service
+bootstrap.
+Now there are third party things to conduct Automated Service Management.
+
+Closed operating systems have a generally stronger idea of services.
+
+launchd is the general idea of systemd (conceptually).
+
+Poettering didn't like some elements of launchd, so he wrote a blog post entitled "Rethinking PID 1"
+
+Systemd is about system management. We generally think of a system as userspace and kernel layers. Systemd
+adds a "system" layer in between the two layers. How does this work in reality?
+
+Adoption: Systemd is widely adopted by the major Linux distros, although adoption was a contentious debate (esp.
+ Debian and Ubuntu).
+
+Systemd complaints:
+- It violates UNIX philosophy. Perhaps not, if you look at the daemon by itself.
+- It's bloated and monolithic.
+- It's buggy.
+- I can't stand Lennart Poettering.
+- It's not portable.
+
+Is UNIX as a concept, dead? Linux has grown to the point that it can do what it wants in the industry, which is
+liberating for both Linux and Unix.
+
+Systemd represents change, and a lot of it. Mocking systemd isn't the proper approach. See the reasoning and
+suss out what it can be used for. 
+
+What can we get from systemd?
+- Message transport (mark has its own set of issues). Something kernel based 
+- RPC framework, but not necessarily using DBUS. This allows the kernel and userspace to communicate more
+  efficiently.
+- Automation via API
+- Containers
+- A system layer
+- Consistent Device Naming
+- log/event/audit handling
+- changing the model of an application
+
+Final point: we should avoid pitying systemd and look at what we can get/learn from it.
+
+Profiling the FreeBSD kernel boot
+Colin Percival (10am DMS 1140)
+-------------------------------------------------
+
+
+This work was brought about by trying to get a FreeBSD laptop working.
+Noticed the kernel had multiple pauses and would just appear to "stop"
+for some time.
+
+Boot process:
+- BIOS/EFI
+- FreeBSD boot loaders
+- FBSD kernel init, including machine init, mi_startup, and start_init
+  - start.init is blocked until mi_startup finishes.
+- FBSD userland init
+
+Linux boot profiling:
+- Linux prints a timestamp at the start of each line of kernel output.
+- This makes it easy to debug a long kernel boot.
+
+Problem: system has to print times before the clocks are started, which means its printing zeros for the times.
+
+DTrace wasn't really appropriate as a profiler as it requires things that aren't started yet.
+KTR was better, but there were limitations that prevented it from being fully useful.
+
+TSLOG system was used instead.
+Finding times is easier just by tracking when a function is entered and exited.
+
+with TSLOG, sysinit macro is redefined. 
+Device probe and device attach routines are used alot.
+configure2 looks for attached busses looking for devices.
+drivers declare their probe and attach methods with  devmethod macro.
+ - this means the FBSD kernel is object-oriented (see kobj(9))
+
+makeobjops.awk now adds prologues and epilogues to the generated code and annotates device.if.m
+This helps determine where any particular thread is during the kernel boot.
+
+It quickly becomes too complicated to extract information from the kernel scheduler.
+The simpler approach is to annotate spots where the main thread is forced to wait.
+The records are dumped after boot finishes. Records are organized to show where boot holds happen.
+Flame charts are used for a visualization tool.
+
+demonstration of records:
+there is a lot of time in delays or running printf.
+
+Largest delays: waiting for usbus0, GELI key derivation
+Made a single pass over vm_page array to reduce 15ms per GB of ram init time to 3.5 ms per GB of RAM.
+Device probe was fixed by highpoint after notification of performance problem.
+starting APs - delays were mostly spent printing status messages. Warner reduced from 41ms per AP to 3 ms per
+AP.
+
+these fixes shaved about 2 seconds of boot time.
+
+WIP improvements:
+- vprintf: a lot wasted time is spent printing newline characters and scrolling. This is very bad for systems with
+  virtualized consoles. There is a significant improvent just by having the system remembering what's on the screen
+  and avoid redrawing unchanged things.
+
+Q: is there a video option to improve this? A: not really - those options don't happen until later in boot.
+Q: are there further write improvements if scrolling is disabled entirely? A: Yes, the write time goes to almost 0
+if the behavior is changed to avoid scrolling. This wasn't done as it may be seen as too drastic a change for the
+users (POLA violation).
+Q: can we print less or nothing at all? A: Yes, print reduction has already happened with Warner's work and a
+boot=mute option is available to avoid printing anything (user configurable).
+
+
+ZFS send and receive, performance issues and improvements
+Rodney Grimes (11am DMS 1160)
+------------------------------------------------------------------------------------------
+
+
+Local use of zfs send/receive:
+ - context switch per buffer
+ - pipe buffer size. This is increased to 4k with dynamic growth and shrink
+This code is difficult because the pipes can eat up the buffer.
+
+Current pipe code for copy in/out use a single mtx and lock. 
+Dragonfly has made some improvements to get some concurrency. Claims about a 30 improvement in pipe code
+efficiency.
+
+ZFS slowdown points send|receive
+- Encryption can become a bottleneck
+- ssh hacks
+
+Encryption requires a significant CPU load on both ends to encrypt and decrypt the data.
+
+We can stop using pipes for send/receive and instead use sockets:
+The code just wants a file descriptor, it doesn't care if comes from a pipe or socket.
+
+There are a number of benefits from using a socket:
+- no locking
+- no copyin or copyout
+- no context switches
+- fewer running processes.
+- direct from fs buggers to mbuf via write(2)
+- direct from mbufs to zfs via read(2)
+
+only took 177 lines of code to make the change
+
+Future Work:
+
+pipes and cache size
+page flipping pipe
+kevent/kqueue
+
+
+Forget reusability, aim for perfection (mandoc development)
+Ingo Schwarze (1:30pm DMS 1140)
+----------------------------------------------------------------------------------------
+GRAB HIS SLIDES from https://www.bsdcan.org/2018/schedule/events/958.en.html
+
+Code is unusable without documentation.
+Bad documentation is as bad as bad code.
+Documentation must be correct, complete, and concise.
+Marked up for display and search, easy to read and easy to write.
+
+All BSD projects use the mdoc(7) toolbox.
+
+5 lessons learned from working on mandoc in the last 2 years (2016-2018)
+
+- removing SQLite -
+
+It was releasing every month and adding roughly 15,000 lines of code every year.
+Forking it wasn't feasible; it was ideal for ports. The problem was it is integral for mandoc.
+
+mandoc only needs to frequently read from a small database.
+
+the solution for mandoc.
+
+searching pages
+access search results
+program execution
+
+Removing SQLite from the base:
+-drastically lessened code
+- increased lookup speed
+- removes the need to audit 15,000 lines of code every year.
+
+Do not blindly use standard tools - there may be significant hidden costs.
+A homegrown solution can be simpler and maintainable.
+
+- OpenSSL to LibreSSL motivation -
+
+forked from openssl because of heartbleed and other neglect of security practices.
+LibreSSL documentation improvements
+- was incomplete, sloppy, and below OpenBSD quality standards.
+- needed to be converted from pod to mdoc.
+
+There was a pod2mdoc tool already available. It had a hard time converting presentational to semantic markup.
+The original pod markup was missing, wrong, or missing macros.
+Fixing this required reading of the complete text by a human.
+Content cleanup had to be done during the conversion.
+
+OpenSSL has hundreds of public functions that aren't documented. However, there are functions inside that
+users shouldn't know about because they were nonfunctional.
+
+LibreSSL is still missing documentation of hundreds of functions. review passes through the docs, routine syncs
+with OpenSSL.
+
+API design needs to avoid suprising the user and be smaller. Avoid families of nearly identical function.
+
+- Manual pages on the web -
+
+C code cleanup
+HTML output line break logic
+HTML element attribute and css cleup
+replacement of hard-coded "style=" attributes with CSS where possible.
+
+- Formatting 3rd party documentation -
+
+all manual pages in ports used to be formatted in groff. This is removed now.
+there are still about two dozen man pages using groff
+
+Mandoc changes:
+Keep up with new security features.
+Moving ahead with regression testing
+improving diagnostic functionalities
+remove MLINKS
+bugfixes
+Features:
+improving search
+improve eqn
+performance enhancements
+
+Conclusions:
+
+Bad API design can make documentation almost impossible
+Callbacks are very hard to document
+avoid writing markdown documentation by hand. Use a converter to move documentation to markdown, if
+necessary.
+Investigate before introducing dependencies.
+Don't focus on performance gains.
+Success of a long-term project is more dependent on successfully paying attention to maintenance details.
+
+
+The TrueOS Difference
+Ken Moore (2:45pm DMS 1120)
+---------------------------------
+
+
+- History for context -
+
+2005 as a desktop focused version of the FBSD release.
+Began adding custom utilities to FBSD to shore up some weaknesses from the platform.
+All these utilities were submitted back to FBSD as ports.
+Kris started adding/customizing FBSD ports on a regular basis. This meant maintaining a fork of the FBSD ports
+tree.
+PCBSD ended with version 10 - TrueOS began rolling builds based off FreeBSD-CURRENT branch.
+TrueOS began differing from FBSD with including pkg base and OpenRC.
+2016 - PCBSD officially transitioned into TrueOS
+
+TrueOS difference:
+Consumer focused: (servers and desktops)
+Move from being a downstream consumer of FreeBSD to an upstream tester/contributor role.
+
+- How TrueOS differs from FBSD -
+
+Release Engineering
+
+TrueOS doesn't follow FBSD's release schedule.
+STABLE release every 6-months - this was useful for derivative products and appliances that need a slower update
+schedule.
+UNSTABLE release is the true "rolling release" that updated every week/month. This rolled both base and ports
+updates together.
+
+Quality Assurance
+
+Automated checks to catch common issues, including ports failures and base failures.
+Manual checking; does it pass the "smell" test?
+
+Service Management
+
+OpenRC to replace the rc.d subsystem.
+- state-aware management of services.
+- proper dependency handling of services.
+- much faster and more reliable operation.
+
+Next Steps
+
+TrueOS is moving to a distribution platform model. Project Trident continues the desktop, but Ghost is also
+offered as a distribution of TrueOS.

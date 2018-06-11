@@ -1,0 +1,415 @@
+BSDCAN 2018 Day 2 (Saturday June 9)
+
+Flexible Disk Use in OpenZFS
+Device Removal & RAID-Z Expansion
+Matt Ahrens (DMS1160 10am)
+-----------------------------------------------------
+
+
+The goal of ZFS is to have all features working well together to make system administration easy.
+Additional is to make the system resilient.
+
+Design "wins"
+- The filesystem is used as the administrative control point. Changes are a one time command.
+- Storage is easy to add.
+<technical difficulty>
+- Unexpected win was the portability of storage between different systems.
+
+Design "fails"
+- some props only apply to new data, and there isn't a simple way for a user to go back and fix a config error.
+- the primary storage cannot be reconfigured.
+
+Two new features in ZFS:
+- Device removal
+- Updating RAIDZ configuration
+
+-Device Removal-
+
+Solves over provision, wrong disk/vdev, and migration problems.
+
+Overprovision is a minor feature as very few ever have this problem.
+
+Users find being able to use device removal to migrate the pool to larger storage or a different number of drives
+very helpful.
+
+Scrub and resilver has a huge hit on performance. This is also a concern with device removal.
+Device removal works by doing sequential reads from the device to be removed. This uses spacemap, not
+blockpointer. However, there is no checksum verification.
+
+Mapping function:
+- old block pointers > removed vdev
+- mapping is always in memory
+ - every effort is to keep mapping minimal by mapping the largest chuncks possible. It also removes old entries
+   as they accumulate. Using zfs remap also reduces memory use by about 10x.
+- whenever writing a new block pointer, zfs adjusts to point to the concrete point directly and then remove the old    
+  dynamic point.
+
+Freeing data is the main necessity.
+- free's from removing vdev.
+- there are procedures where ZFS checks if the data has yet to copy/already copied/in process of copying.
+
+Split blocks:
+allocated regions are split into multiple chuncks to continually free the necessary space.
+
+Q: when doing zfs remaps will there be a similar io pattern to a resilver? A: Yes
+Q: zfs remap what is it's context? A: open context spread over multiple transactions.
+Q: is there a command to see the size of the remapping memory table? A: Yes
+
+Disk removal doesn't work with RAID Z. It only works with plain disks and mirrors. Devices also be the same ashift
+How to do device removal?
+Check how much memory could be used after removing the disk.
+Always check the status of the zpool. It provides stats of what's done and is still to do.
+Removal can be canceled. If power loss occurs, device removal picks up where it left off. ZPool checkpoint does not
+work during removal, but all other zfs operations do work.
+Q: is there a way to pause the removal rather than canceling A: No, but it is an area of future work.
+Stopping the removal puts the home of the storage back to where it was originally.
+
+Q: How fast is the device removal stop command? A: Cancellation is quick as all the work is allocated in memory.
+
+zpool status after a removal shows how much memory is used for the removed device mappings.
+There is a significant performance impact during removal. Fragmentation can increase this.
+There is also a performance impact after the removal completes, but it is largely negligable.
+
+Redundancy impact:
+All copies of data are preserved in mirrors.
+Silent damage can be detected and corrected, but checksums are not verified and transient errors become
+permanent. More software under ZFS can incur more errors.
+
+Dev Removal is in FreeBSD since Feb 2018.
+
+Q: How to maintain good performance? A: one device removal at a time and adjusting how space is allocated.
+Q: what happens if power goes out during mapping? A: Mapping is stored and redundant, this won't effect the task.
+Q: what can I do if I'm worried about errors sneaking in? A: Doing a scrub before a removal is a great way to avoid 
+introducing errors.
+
+How to add a disk to increase the RAID level? It's similar to resizing a window for an editor and the text all snaps
+into place. Renumbering of data is automatic, then the parity is recalculated.
+
+Reallocating space for the RAID Z does the numbering and parity simultaneously. It reflows into a larger numbering
+scheme.
+
+Q: Could RAIDZ removal be possible by adding another storage? A: No
+Q: Checks and verifcations still happens after the expansion? A: yes
+
+RAID Z expand is done with an attach command: zpool attach tank raidz1-0 c2t1d0
+
+RAID z expansion is still a ways off from being integrated.
+
+RAIDZ must be healthy during reflow. There is a performance impact: CPU overhead
+
+Status:
+pre-alpha code is available for preview. DO NOT USE THIS WITH ANY CRITICAL DATA!
+design is complete.
+future design wants to add doing multiple removals.
+
+Q: is performance impact worse than if you set up the raid z pool correctly? A: no, very minor at worst.
+
+
+Imprisoning software with libiocage
+Utilizing FreeBSD to build secure compartments
+Stefan Gronke (DMS 1120 11am)
+----------------------------------------------------------------------
+
+
+iocage is container management with two assumptions: configured networking and ZFS storage.
+Stefan started using iocage and got bogged down with bugfixing, then forked to libiocage. Goal is to merge
+back into iocage command line tool.
+libiocage is compatible with all other iocage variants and is an object oriented python library.
+libiocage has one-shot jails, nested jails, and advanced resource limits.
+filter globbing allow to interact with multiple jails at the same time.
+
+had to use ipfw to ensure a jail didn't break out and assume control of networking.
+Stefan wants to limit networking within a jail (the assumption is that anything happening in a jail is untrusted.)
+
+
+multiple data sets are supported and globbing allows manipulating these simultaneously.
+
+Nested jails are also supported. There are issues with path length, so use shorter paths and mount points.
+A nested jail has some access restrictions. Set the rc.conf and add the dataset path.
+
+improving security
+
+offline jail updates so a jail never has to be exposed to the internet.
+jail data is always treated as untrusted.
+hardenedbsd support is added.
+VNET security features enabled to prevent a jail from calling out to your network.
+
+Safety
+adding more errors and warnings.
+no permanent changes to a jail is automatically done (must be user called)
+there is a full cleanup and rollback after an operation fails.
+
+translations are intended to be added at some point. Many iocage events aren't really meant to be human
+readable.
+
+when trying to script iocage, it is recommended to use the libiocage library, not the command line utility.
+
+The python library is moving towards an alpha release.
+ - consistent/stable API
+ - finish missing features:
+ --plugins
+ --migration
+- integration tests.
+
+Advanced Python demo
+
+
+Fighting Spam at the Frontlines 
+Aaron Poffenberger (DMS 1140 1:30pm)
+-----------------------------------------------------------
+
+
+<note of thanks>
+Fighting spam for 20+
+Ran a BSDCan tutorial "OpenSMTPD for the Real World"
+
+The goal of reducing spam:
+- block at or before the MTA
+- avoid content analysis
+- allow legitimate senders to connect
+- prevent illegitimate senders from connecting
+
+Spam is unsolicited email, typically of an advertising nature that recipients cannot easily unsubscribe from and is 
+typically sent fronon-canonical senders (compromised systems)
+
+Spam cannot be oupted out of. (mailing lists, family members, marketing emails with an opt-out button.
+
+x-listing:
+blacklisting: block delivery
+greylisting: temporarily fail delivery.
+whitelisting: always allow this ip address to deliver
+
+blacklisting is a simplistic method to block large blocks of people/regions. It has a problem of false positives 
+though.
+
+Blacklists also naturally evolve into whitelists. the problem is that whitelists are unmaintainable.
+
+Greylisting was the first fairly effective way to deal with spam.
+
+OpenBSD implemented in 3.5.
+Delays delivery for a set period of time.
+One problem is that large senders like Google can send from more than one IP address.
+
+Why is x-listing viable now.
+- spf
+- immense consolidation in the number of domains handling their own email.
+and
+-spammers still spam from compromised ip addresses and do other illicit activity.
+Yahoo came up with the sender policy framework (SPF)
+plublished DNS TXT records to specify authorized email.
+no major mail domains use MX hosts to send email.
+SPF records are like MX records but for outbound mail.
+
+tools to walk spf records:
+spf_fetch
+ this is a collection of utilites to recursively look up SPF records and manage whitelists
+ released during BSDCan 2016 as part of the OpenSMTPD tutorial.
+ if you load a pf table entirely it will quickly load ip addresses and update the table dynamically.
+ can also pipe to a process.
+ spf_fetch is written in shell
+
+smtpctl spf walk and spfwalk
+ rewrite of spf_fetch in c in collaboration with Gilles Chehade.
+imported into spmtpctl(8)
+ both spf walk and spf fetch are standalone commands.
+ it is trivial to filter out the output.
+ 
+How to put it all together to prevent spam.
+1. Configure Firewall
+ most BSD people have access to pf
+ the whitelists should always win as this prevents missed email from our known-good list.
+ expire blacklisted IPs regularly
+2. have a list of common domains
+ aaron has a list of roughly 140 domains he allows
+ add domains you don't want to miss any email from.
+2b. watch for outbound mail and add spfwalk'd domains to whitelist.
+3. Blacklist known bad actors
+ any mailer that doesn't play by the users. Take list from a trustworthy source.
+ any that sends email to spamtrap addresses.
+3a. trusted blacklists
+3b. log file mining for bad actors
+ in theory, a compromised machine sending out emails is also producing interesting data for you.
+ look for failed requests
+ look for people trying your urls trolling for admin sites.
+ if you're doing a good job with your whitelist, you can ban freely.
+3d. sshd logs
+ look for any failed login attempt
+
+there is a debate about using a black hole or use a spam trap to waste spammers' time.
+
+4. test!
+ whitelists are mostly safe
+blacklists can cause trouble, but again, if the firewall is configuredso that whitelisted ips always pass, little trouble to 
+be expected.
+ Greylisting is mostly safe, but ...
+ be sure to monitor your logs.
+
+most scripts are working on a 24 hour rolling window
+OpenBSD isn't a requirement to do any of this, but you do need something like spamd(8)
+spfwalk hasn't been tested on many platforms, but it is clean c code.
+what about dkim and dmarc help me with filtering spam?
+not really, no.
+not designed for spam filtering. Some spammers publish dkim keys.
+
+other recommendations: block port 25, postscript on the mailserver to something like a 1000 recipients per IP 
+address.
+
+spf_fetch has almost all the code. There are a few commits left to put in.
+Q: OpenBSD has been successful with many of these techniques. However, stolen credentials will always slip 
+through. Detection has to be constant to find those 
+
+
+Running Linux applications on FreeBSD
+Chuck Tuffli (DMS1120 2:45pm)
+---------------------------------------------------------
+
+
+Linux binary support on FreeBSD and a few ways you can use it.
+image demonstration of a system reporting as both linux and freebsd.
+
+How:
+Matching ISA
+Most application are not self-contained and need help from the system to allocate memory and other stuff.
+this means supporting system calls.
+In many cases, the calls are similar, and FBSD only needs to translate the Linuxims into FBSD.
+There are three modules linux 32, 64, and linux common.
+
+when compiled as loadable modules, the os can run both 32 and 64 bit applications.
+the emulation path allows linux binary to reroot itself.
+the os prefers binaries under compat/linux
+Is this really linux emulation? No, no matching ISA, syscall support in indefinite. Because there are reasons for and
+against calling this emulation, a new term "linuxulator" is used.
+FBSD pkg doesn't understand debs or rpms. Volunteers have taken the rpm or debs and re-encoded as a pkg file.
+some applications are very fussy about libraries and headers and their install locations.
+this is doubly a problem with linux as its build environment is very complex.
+
+linux containers are only outwardly similar to jails.
+containers can have their software up to date using the standard package management tools.
+
+on windows, containers can be used to swap out a file system and alter the windows > linux emulation layer.
+
+fdescfs has a linux specific option called linrdlnk.
+nullfs provides a useful way to share directories between the host and jailed/chrooted environment.
+FreeBSD allows changing the reported linux kernel value using a sysctl.
+
+many applications work ok because they have code that checks and sets specific capabilities. However, most apps
+don't check the return value and keep working even if caps change after start.
+
+implementing cap_get per check 
+
+mremap is a system call on linux that is very difficult to get working. it expands/shrinks/moves a memory mapping 
+while maintaining the data in memory. this is a very efficient realloc. mremap is required to run linux apps on FBSD.
+
+realloc is supposed to resize the memory region while preserving the contents.
+
+The Evolution of FreeBSD Governance
+Kirk McKusick (DMS1160 4pm)
+-------------------------------------------------------
+
+
+UC claims BSD as a major accomplishment (even though they run linux from top to bottom)
+BSD was really first released in 1979. Source code control started in 1980.
+Computer systems research group managed 10 years of releases.
+<continued discussion of the history of BSD>
+
+Yahoo was one of the big early users of FreeBSD. They agreed to host CVS and the distribution.
+The 20-member core team died off as people stopped working or moved on from the project. Core was reworked
+to a 9 member elected body, with the first election in 2000.
+Core team appoints members to other teams
+Used to have a single freebsd mailing list, but breaking down into individual lists was too unweildy as the project 
+grew.
+
+Workflow:
+three groups of commiters: source, docs, ports.
+commit tags that include all necessary information required to be complete before a commit is merged.
+commits can have a sponsoring organization.
+
+How do you work and play well together?
+Avoid commit wars.
+have structure to settle disputes
+in today's world a code of conduct was considered necessary.
+2 Code of Conduct releases and a third revision in the works.
+
+Committer turnover:
+drop commit privileges after one year of inactivity.
+allow auto-reinstatement for up to two years.
+there is an accelerated process for reinstatement after more than two years.
+
+Recruitment is as important as removing deadwood.
+- TeachBSD
+- corporate
+- social media/conferences.
+- Google Summer of Code (GSOC)
+
+Existing project members need to step up to introduce new people to the project, be friendly, and show the
+good side of the community.
+
+About 380 active committers to the project. Average age is staying static as new people come in to replace dead 
+wood.
+
+Dev model
+
+We're good at small changes that are easy to identify and reach a quick consensus. (about 1-3 people)
+The larger/wide ranging changes are very hard to do. Discussion takes years, and usually results in someone 
+arbitrarily forcing change or someone leaving/forking the project.
+
+The Community Process is created to streamline large changes to the project.
+Issue arising about Core team communication with committers. Core is fairly opaque, and Core is now releasing an
+agenda of discussion topics, but it's a huge list that doesn't always reflect what is being discussed in the core
+meeting.
+
+Security team has issues keeping an officer in the position. There's a lot of burnout. Looking to hire/pay someone
+full time to fill this role. The officer is also now managing an entire team of security volunteers.
+
+Conclusion
+There's a fine balance for project governance: too much is stifling, too little is prone to explosions or collapses.
+Governance requires constant maintenance.
+
+A: Sees core as both a technical body and board of directors.
+Q: how long has core been using video chat and what tech? A: 3 years on Google Hangouts.
+Q: Does the project provide personal development to CORE? A: No, the foundation is sensitive about avoiding the 
+perception that the foundation is taking over the project.
+
+
+Closing Session
+Dan Langille (DMS1160 5pm)
+------------------------------------------
+
+
+record attendance: 280
+<thanking sponsors>
+<thanking volunteers>
+<handing over Groff to a new handler>
+<FreeBSD foundation handing out thank yous/backpacks>
+
+Auction
+Coffee beans:25
+Pine machine (RPI) 50
+Maple Bacon kettle chips 20
+Button down shirt with fbsd founder and current core team signatures 50
+$20: 40
+powerpack battery 40
+lenovo square power adapter 80
+savaged by systemd 30
+audiobook of savaged by systemd 251
+Ed Mastery book 40
+Ed Maste book 100
+Ed Mastery misprint book 90
+bsdcan labeled power strip 30
+xlarge fbsd foundation tshirt 30
+love bsd pillow 170
+extra large chocolate chip cookie 60
+gelatto spoon 70
+second to last cookie 50
+Hand stitched bootloader pillow 140
+skylake g4400 processor 55
+Ethiopian coffee 20
+bose headphones/cables 50
+second edition book 50
+pair of books 80
+linux command line book 60
+Another linux command line book 40
+tilted windmill press pen 220
+lightup pens 80
+tshirt that henning will wear 785
+

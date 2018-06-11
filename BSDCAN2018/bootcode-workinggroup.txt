@@ -1,0 +1,45 @@
+BSDCAN 2018 Developer Summit
+
+Boot code working group
+Benno Rice
+
+Agenda:
+
+*Modernizing loader for LUA*
+
+This work is largely done, there is some coexistence code still to do, or to disable the legacy system entirely.
+Q: Was boot environment support merged into the LUA loader? A: Yes, it's all done.
+
+Can we put the boot code into a BSD labeled partition? There's additional complication that this will incur.
+
+4th upgrade (ficl 4)
+4th is missing a ficl interpreter for userland.
+Argument over killing 4th  - tabled in favor of an FCP
+
+GELI patches - there are some trivial things and some nontrivial problems. There is a goal to merge the patch in
+during this conference. <continued arguments between Warner and GELI patch creator> Warner will take another look
+
+makefs fat32 support will be added to FBSD 12.
+
+Multiboot compliance
+
+
+*Cleaning up the first stage of the loader*
+
+Stage 1 is the work to actually load the loader.
+There is a roughly 600k limit to boot code with GPT.  There are generally boot code size limits in place for different
+architectures.
+Writing things to the screen during boot is very slow. Is it worth investigating a blind loader/preloader?
+There is a benchmark in the loader that prints dots to the screen during boot. This can be used to see how fast things
+are printing to the screen.
+
+It is also possible to disable all the scripting languages for the loader to see how fast the ASCII loads.
+
+libsa is the standalone implementation of a number of things. Could we get UFS read, ZFS read, and other things
+ efi\freebsd\loader.efi support
+
+
+*Too many libraries -> move them all to stand except 4th and lua support libs*
+
+Is there documentation for the handoff from the pxe loader to the actual loader? Can you hand arguments directly
+into the loader? No to both.

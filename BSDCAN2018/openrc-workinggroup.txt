@@ -1,0 +1,114 @@
+Wednesday June 6, 2018
+BSDCan Developer's Summit
+
+**OpenRC Working Group**
+Warren Block
+
+Background:
+
+iXsystems uses FreeBSD for FreeNAS and TrueNAS. It also has an experimental FreeBSD-based OS called TrueOS
+
+OpenRC is a BSD licenced RC init system written in C.
+
+Originated by Roy Marples in the Gentoo project, but was then split off and BSD licensed.
+
+Used similarly to FreeBSD rc.d
+
+Works without kernel changes or replacing pid 1 (unlike launchd).
+
+It also simplifies service scripts.
+
+Comparison between OpenRC and FreeBSD RC:
+
+Q: can runlevels boot simultaneously? A: Yes, but it needs more experimentation.
+
+OpenRC uses commands to add, enable, and other options for services.
+RC uses lines added to a script file.
+
+OpenRC services are monitored and have additional health reporting over rc.d
+
+OpenRC service files are extremely short.
+
+Q: is there a way to send output to a pipe A: probably not.
+
+Dependency Handling
+
+Keywords: need, use, want, after/before, provide, config, keyword.
+
+
+
+Q: how does OpenRC compare to other BSD licensed init systems? A: don't know,
+more info is required.
+
+Porting:
+
+How do you choose which RC system is used at system boot? One method is to link a file,
+another to add a setting in loader.conf?
+
+Using loader.conf is a more FreeBSD method.
+
+Are there any remaining incompatabilities between OpenRC and FreeBSD? Kris: I've cleaned
+up almost all of them, but there are sure to be edge cases.
+Runlevel naming: this is likely something that should be changed. The terminology
+needs to move away from Linux.
+
+OpenRC runlevels are not numeric, they are names.
+
+Q: Can new service groups (runlevels) be created and populated on the fly? A: Yes
+
+Q: Have any other BSD projects discussed using this? A: don't know
+
+Colorized boot by default? FreeBSD tradition is no.
+
+Q: Does OpenRC do socket or event based activation of services? A: No, but this is
+something that is being worked on upstream.
+
+Q: Does OpenRC hook into the RC shutdown state? A: yes
+
+OpenRC uses disparate groups that are independant of each other
+
+You can start and stop individual services independant of groups and set services to
+start at boot and then stop individually.
+
+Q: How does it handle single-user mode? A: So far it defaults back to the traditional
+system as TrueOS doesn't use OpenRC as init.
+
+Warren needs to add a link to this presentation to his people.freebsd spot.
+
+Needs:
+ Handbook docs
+
+** Warren wants a list of things to add to the eventual FCP or things that are already
+done.**
+ 
+Do we need to support both or just move over to OpenRC? A transitional time that supports
+both is a good idea as the old system is offlined and the new system matures.
+
+Staged transition should be attempted: 1. FCP to add openrc and then 2. another FCP to
+later disable the legacy rc system.
+
+What about avoiding trying to maintain two RC systems?
+
+Should an FCP be done before investigating the issues brought up in this session?
+(syslog integration)
+What about just a Phabricator diff? <argument noises>
+We can link a Phabricator diff and an FCP together.
+
+OpenRC has no way with current settings a way to specify syslog or remove syslog.
+
+Looked at OpenRC project - they support syslog and are currently discussing adding piping
+standard error and out to syslog as well. FreeBSD may be able to prod that along.
+
+
+
+**Things to do:**
+1. Write the FCP
+2. Investigate: syslog, socket activation, system states, renaming "runlevels"
+3. Prepare a Phabricator diff.
+4. Maybe add an API/library on top to query and report on OpenRC states.
+
+
+Q: is setting the loader.conf variable to change pid(1)? A: No
+This may conflict with Hardened BSD restrictions on loader.conf
+
+

@@ -1,0 +1,326 @@
+Wednesday June 6, 2018
+BSD Can 2018 (Developer's Summit)
+
+
+**09:00-09:30: Opening **
+
+
+*Sponsors:*
+
+Gold: FBSD Foundation
+TShirts: Tarsnap
+Dan Langille
+
+Attendees: 120 Registered
+Lunch in 1160
+Working Groups in DMS 1130
+Dinner tonight: 6pm HHN 013
+
+*Next Year:*
+
+Sponsorships, topics, feedback: devsummit@FreeBSD.org
+
+*FreeBSD Foundation Discussion:* Deb Goodkin
+
+Supports and builds the FreeBSD Project and Community Worldwide
+First time running FreeBSD - using Lumina Desktop and PDF viewer for this presentation.
+
+History:
+Founded March 2000
+501(c)3 status based in Longmont, Colorado
+100% donation funded
+
+Introduction to the FreeBSD Foundation Board and Staff
+
+Purpose Statement is to make FreeBSD the best platform (for a variety of purposes)
+
+Budget: 1.25 million. 75% of budget goes towards software development.
+
+Discussion of education/advocacy efforts.
+Quick mention of security team/RE. and looking ahead to FreeBSD 12. (very busy year for them)
+Technical leadership works with the core team
+Legal support, Summits (and Conferences)
+Larger donors are now called Partners (closer relationship than in the past)
+There are also collaborative efforts with a number of larger corporations (Intel, Netflix, Microsoft)
+
+FreeBSD Day: June 19
+Celebrate the 25th anniversary of the FreeBSD Project:
+- Installfest
+- Timeline
+- Anniversary T-Shirts
+- Cake!
+
+Foundation is using FBSD Day for marketing and promotion.
+
+
+**Looking to have Kernel boot time reduction help**
+Colin Percival
+ 
+probing ps/2 keyboard and mouse: there is a built-in stabilization delay that slows down the kernel.
+Can someone out there with hardware do some testing and help speed this up?
+hammer.time deay: 640 ms needs to be addressed
+DEVICE.ATTACH atkbd delay
+thread slowdown
+GELI key slowdown
+sysinit: 10.4 ms per AP
+sysinit: 3.5 ms per GB RAM
+
+
+**09:30-10:30: core@ update **
+
+
+*Core.9 Review*
+
+New community process (FCP)
+FBSD Project Members (distinct from committers; no real PM yet, but communication will likely increase this; 
+ these people go on the developers list and an account on FreeFall but don't fit into the defined committer roles)
+26 new Source Committers
+Security team Reboot (was stretched thin, now trying to improve communication and broaden the skill set)
+Personnel Concerns (about 4 issues with community members resolved)
+
+Licensing questions:
+ - GPLv2 in Linux KPI
+ - SPDX is still in process (utility to identify licenses on files)
+ - All rights reserved (Warner and lawyers are working on defining/updating what this means)
+ - ConcurrencyKit
+ - BlackDuck (one option for license auditing. This periodically scans the code base and checks license,
+   does security audits too. Offers many options for tracking. This is in progress and will carry over to the
+   next core team.)
+
+In- Progress Issues
+- GDPR (European law to protect personal data. No one really knows how it impacts FreeBSD.
+   Is there anything concrete to come out of this? A: no, except the Foundation may produce notices.)
+   Are we still using Google Analytics? Not any longer.
+   Is there a Data Protection Officer to contact for questions? A: this isn't required of the project, as
+   best we understand. What about email lists that aren't publically available? (developer, core, etc.)
+   A: This is still in progress; baptiste is talking about this with a lawyer in Europe, but answers are slow
+   due to the complicatedness of the FreeBSD project.
+
+- x86 CPU microcode updates. Core is trying to ensure these updates are making it into the project faster.
+
+- ASLR : there is a patch that is continuously being rebased that is in Phabricator
+
+- Retiring GPLv2 Toolchain for FBSD 12
+ * LLVM for amd64, arm64, i386, arm to replace.
+ * External GPLv3
+
+Q&A
+
+Q: What is the status of LDB for the kernel toolset? A: stalled, looking for someone to work on this.
+ 
+Q: Did ASLR come from Hardened BSD/where did the code come from? A: After feedback on the patch,
+ it was decided not to bring in the Hardened BSD patch, in favor of another patch that uses a different approach.
+
+Q:  Do we have mitigations for the new Intel/Amd security flaws? A: The original flaws have microcode updates
+available. SecTeam is also looking at streamlining the process to make future microcode updates available more
+quickly. The Foundation is also looking to make improvements in this area.
+
+Q: is there a public place for people working on microcode updates to communicate? A: no, because of NDAs and
+the sensitive nature of the security vulnerabilities.
+
+Q: What about different microcode updates that are available to solve the same thing? A: Some kind of table/chart
+that is publically available to help users decide which update they need is needed.
+
+Q: Package/base, where are we today? A: there is a working group to discuss it today.
+
+
+**11:00-12:00: Release Engineering update**
+Marius Strobl
+
+
+Introduction of RE team (about 12 people)
+
+RE Process (What does RE do?):
+
+New release & support model implemented with FBSD 11.0
+ 5 year support for major release
+ 3 month support for minor releases after the new minor release is available.
+ Minor releases are to be done every 9 months
+ Major releases are to be roughly every 32 months (though 24 months is planned for 11.0 to 12.0)
+RE documentation: From release cycle announcement to security team handover.
+Change management during repo freezes:
+ - Commits to src require approval from RE team.
+ - So far, there are 90 approved commits and 122 total commits during the freeze for 1..2-RELEASE as of 11.2-RC1
+Testing BETAs, RCs, and RELEASEs.
+Writing release documentation.
+
+Outside of release cycles, RE builds snapshots of active branches weekly.
+Coordinates with the other FBSD teams.
+ - Core (release schedule changes)
+ - Ports and Security (release support lifetime)
+Help write Errata
+Maintaining src/release and external release building bits.
+
+Since May 16, 20018 FreeBSD 10.4 and 11.1 are available on the Google Launcher Marketplace.
+
+*Release Schedule*
+
+RC2 build starts: June 22.2018
+If needed, RC3 build starts: June 15, 2018
+RELEASE build strts: June 22, 2018
+RELEASE announcement: June 27, 2018
+
+11.2 RELEASE cycle is routine so far.
+- Rebuilt due to incomplete merge
+- defunct arm images
+- amd64 disc1.iso image overflowed again
+- multiple bug fixes and workarounds.
+
+Open issues:
+- Failed x86 kya tests and some broken i386 kyua tests
+- WARs for Meltdown, Spectre, and Spectre NG
+
+POLA violations:
+- renaming mlxen.ko to mlx4en.ko between 11.0 and 11.1
+- removal of net.inet.ip.fw.dyn_keep_states. This is now restored.
+- breakage and disconnection of iw_cxgb in stable/11. More discussion needs to happen to fix this.
+
+How to help?
+- testing: BETAs, RCs, CURRENT and STABLE snapshots in multiple environments.
+- Monitor the FreeBSD forums, mailing lists and PRs and notify RE if some breakage is discovered.
+- Proper testing of commits, preferably include unit tests.
+- Please write useful commit messages. Use Relnotes: yes when appropriate.
+- Follow Change Request Guidelines when submitting merge approval requests.
+- Writing and reviewing of release notes.
+- Do not violate POLA
+
+FBSD 12.0 RELEASE schedule:
+head/slush: August 10, 2018
+doc/tree slush: Sept 7, 2018
+RELEASE: Nov 6, 2018
+
+Questions?
+Q: How many users could be left behind when 11.1 reaches the end of the 3month support lifecycle? A: Doesn't
+ matter, RE doesn't have the resources to support too many branches of FreeBSD.
+
+Stats: Roughly speaking, only about 10% of systems never get updates, about 90% of systems get updated
+within 3-6 months after a new minor release is available. This is looking at people using freebsd-update
+and portsnap.
+
+
+June 7th (Thursday)
+
+
+**Security Team Update**
+
+Security Team has a lot of turnover and is looking to increase technical contributors.
+Especially for vulnerability testing.
+Discretion is required though (although no NDA required). Also, contributors need to avoid disclosing
+security vulnerabilities to their employer.
+
+Vulnerability response
+When FreeBSD is the only entity responding:
+- There is no NDA or explicit embargo
+- The vulnerability only applies to FreeBSD and perhaps Net/Open BSD.
+- There is no major risk of exposure.
+Coordinated Responses:
+- Will have an NDA or explicit embargo.
+- Coordinates response via private party or CERT/CC
+- Requires limited internal disclosure to contain risk of exposure.
+
+Security Team is pretty happy with coordinated responses, but is really looking for more contributors to FreeBSD
+only responses.
+
+Q: Is there documentation on the coordinated response process to integrate new contributors? A: No, the industry
+is still figuring this out.
+
+Foundation interaction with SecTeam
+
+Foundation holds NDAs and manages vendor relationships.
+- This keeps NDAs across changes of the Security Officer.
+- Maintains vendor relationships.
+
+Foundations funds security resources
+- Pays for Ed's time
+- Pays for Gordon's travel
+- Pays for development resources to enable responses (specifically kib)
+
+Case study discussion
+- This was a good example where the multi-vendor response pulled in FreeBSD during the Microsoft-coordinated
+response.
+- Response included people from BSDs, Microsoft, Apple, Citrix, VMWare, Linux distros, Google, and Intel.
+- Heavy collaboration on PoCs and fixes with other BSD variances.
+- CERT/CC got involved and could get pre-embargo patches to pfsense.
+- FreeBSD published SA within an hour of the embargo lift.
+
+One item that came out of this response was industry members attempting to replicate this scenario. Also
+identified a need to compile contact information for different security people at all the projects/corporations to
+better coordinate future responses.
+
+Q: Are there any automatic security checks? A: No, there is Coverity, but it doesn't seem to be used much or be
+maintained. Additional: more tools are being built/developed.
+
+Q: How can contributors help to decrease validation time? A: One idea is to build a security architecture team to
+work with the vulnerability responders to streamline the process. Another is to be more friendly to FIPS and other
+RNG  standards
+
+Q: What about sneaking in patches for security vulnerabilities without documentation (avoiding embargoes)? A:
+We really can't do that, Open Source projects have a hard time hiding those kinds of commits.
+
+Q: Are there embargo rules that define when adressing the vulnerability becomes known and a free for all. A:
+There is usually an agreement amongst the researcher and response coordinator to declare an embargo "blown"
+and open the response. There is no teeth to these agreements though, except that blowing an embargo can often
+mean being uninvited from future private security responses.
+
+Q: Does the FreeBSD Foundation have a preferred method to help with a response when an embargo is blown?
+A: Embargoes are negotiated directly with security team apart from the Foundation. The Security Team generally
+agrees to requested embargo times and honors that agreement. The Foundation is generally considered part of
+the FreeBSD "community" at this point.
+
+
+**FreeBSD 12.0**
+
+
+This session is to be focused on those things that are critical to get done for 12.0 before code slush in August.
+
+- OpenSSL 1.1 needs to be added to base.
+- Break Bad APIs
+- Merge GELI UEFI
+- Break the ABI
+- Dump bug (uninitialized variable)
+
+Critical bugs/blockers can be discussed.
+
+Try and have package base added in 12.0 so we can spend the next release cycle refining/fixing?
+- Deadmatch loose ends need to be added in
+- UEFI boot loader
+- LUA loader by default
+- GELI fixes
+- Loading module penalty - this is a larger discussion, but needs to be resolved before the release.
+- Fixes to compile regular TCP stack as a module will be committed.
+- Fixing up more permissions to kernel memory to be added.
+- ifconfig tag bug - adding an empty ALIAS deletes the IP value - open a PR
+
+Q: Will there be a deprecation policy before 12.0 release? A: Yes, before code slush.
+
+- Early microcode loading on x86 (in kernel: early boot and on resume)
+- Latest ZFS encryption? No, it will take longer to get it ready.
+- Verifying in the loader 
+- Spectre/Meltown mitigations for all architectures? (There's still work to do on other chipsets)
+- Get boot times down in 12 to match 11.2.
+- verify_exec is sitting in phabricator for two years with no reviews.
+- FreeBSD key signing?
+- Is NVDIMM feasable to add to 12? Unsure.
+- Can we ship with a plausible/better CA?
+
+Assigning these tasks to different committers.
+
+
+Looking ahead to 13.0:
+
+- Harass hardware vendors to provide source code/update tools/etc.
+- Produce a list of supported laptops for the release.
+- Make powerpc architectures build with clang. Also powerpc LE support in 13.0
+- More tests committed with code. Increased use of Coverity. (Foundation funded work should always include
+  documentation and tests)
+- CAPSICUM
+- DRM
+- Cleaning GPL licensed things out.
+- bhyve GDP improvements
+- OpenRC
+- Power9 and RISC 5
+- Power Management
+- x32
+- Go to having only one crypto framework in the kernel.
+- Deprecate IPF?
+- Raspberry Pi wifi/bluetooth support?
